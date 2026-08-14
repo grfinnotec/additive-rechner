@@ -300,17 +300,6 @@ function getCoveredServices(totalUnits) {
   return Math.floor(totalUnits / calculatorConfig.unitsRequiredPerService);
 }
 
-function getServiceCostCents(serviceCount) {
-  const bulkUnitThreshold =
-    calculatorConfig.pricing.bulkCartonThreshold * calculatorConfig.pricing.unitsPerPack;
-  const unitPrice =
-    serviceCount >= bulkUnitThreshold
-      ? calculatorConfig.pricing.packageUnitPrice
-      : calculatorConfig.pricing.regularUnitPrice;
-
-  return serviceCount * toCents(unitPrice);
-}
-
 function getCalculation() {
   const serviceVolume = getServiceVolume();
   const totalPacks = Object.values(state.packsByArticle).reduce((sum, packs) => sum + packs, 0);
@@ -327,8 +316,7 @@ function getCalculation() {
       : coveredServices / serviceVolume.servicesPerMonth;
   const annualRevenueCents =
     serviceVolume.servicesPerYear * toCents(state.revenuePerService);
-  const annualProductCostCents = getServiceCostCents(serviceVolume.servicesPerYear);
-  const annualMarginCents = annualRevenueCents - annualProductCostCents;
+  const annualMarginCents = annualRevenueCents - packageCostCents;
   const configuredCompletePackagePriceCents = toCents(calculatorConfig.pricing.completePackagePrice);
   const configuredCompletePackageRegularValueCents = toCents(
     calculatorConfig.pricing.completePackageRegularValue
@@ -347,7 +335,6 @@ function getCalculation() {
       savingsCents,
       annualRevenueCents,
       annualMarginCents,
-      annualProductCostCents,
       configuredCompletePackagePriceCents,
       configuredCompletePackageRegularValueCents
     }
@@ -561,7 +548,6 @@ function buildRequestPayload(formData) {
       savings: calculation.totals.savingsCents / 100,
       annualRevenue: calculation.totals.annualRevenueCents / 100,
       annualMargin: calculation.totals.annualMarginCents / 100,
-      annualProductCost: calculation.totals.annualProductCostCents / 100,
       coveredServices: calculation.coveredServices,
       requiredServices: calculation.serviceVolume.servicesPerYear
     }
@@ -608,7 +594,6 @@ function buildRequestEmailBody(payload) {
     `Benötigte Services pro Jahr: ${formatNumber(payload.totals.requiredServices)}`,
     `Dein Umsatzpotential: ${formatMoneyValue(payload.totals.annualRevenue)}`,
     `Dein Profit: ${formatMoneyValue(payload.totals.annualMargin)}`,
-    `Wareneinsatz für Jahres-Services: ${formatMoneyValue(payload.totals.annualProductCost)}`,
     `Regulärer Warenwert: ${formatMoneyValue(payload.totals.regularValue)}`,
     `Paketpreis: ${formatMoneyValue(payload.totals.packageCost)}`,
     `Preisvorteil: ${formatMoneyValue(payload.totals.savings)}`,
